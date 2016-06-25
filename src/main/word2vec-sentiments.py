@@ -1,77 +1,46 @@
 # gensim modules
-from gensim import utils
-from gensim.models.doc2vec import TaggedDocument
+
 from gensim.models import Doc2Vec
 
 from parserdata import Parser
 from parserdata import Batcher
+from parserdata import TaggedLineSentence
 
+import numpy as np
 
-# random shuffle
-from random import shuffle
-
-# numpy
-import numpy
-
-# classifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
-from sklearn.ensemble import AdaBoostClassifier
 
-#tensorflow
 import tensorflow as tf
 
 import logging
 import sys
 
 
+config ={
+    'log_channel':sys.stdout,
+    'dov2vec_sources': {'../resource/test-neg.txt':'TEST_NEG', '../resource/test-pos.txt':'TEST_POS',
+           '../resource/train-neg.txt':'TRAIN_NEG', '../resource/train-pos.txt':'TRAIN_POS',
+           '../resource/train-unsup.txt':'TRAIN_UNS'},
+    'load_doc2vec': True,
+    'classifier_class':False,
+    'n_samples': 25000,
+    'doc2vec_dim': 100,
+    'batch_size': 100
+}
 
+#Logging init
 log = logging.getLogger()
 log.setLevel(logging.INFO)
 
-ch = logging.StreamHandler(sys.stdout)
+ch = logging.StreamHandler(config['log_channel'])
 ch.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 log.addHandler(ch)
 
-class TaggedLineSentence(object):
-    def __init__(self, sources):
-        self.sources = sources
-
-        flipped = {}
-
-        # make sure that keys are unique
-        for key, value in sources.items():
-            if value not in flipped:
-                flipped[value] = [key]
-            else:
-                raise Exception('Non-unique prefix encountered')
-
-    def __iter__(self):
-        for source, prefix in self.sources.items():
-            with utils.smart_open(source) as fin:
-                for item_no, line in enumerate(fin):
-                    yield TaggedDocument(utils.to_unicode(line).split(), [prefix + '_%s' % item_no])
-
-    def to_array(self):
-        self.sentences = []
-        for source, prefix in self.sources.items():
-            with utils.smart_open(source) as fin:
-                for item_no, line in enumerate(fin):
-                    self.sentences.append(TaggedDocument(utils.to_unicode(line).split(), [prefix + '_%s' % item_no]))
-        return self.sentences
-
-    def sentences_perm(self):
-        shuffle(self.sentences)
-        return self.sentences
-
-
-
-
 
 log.info('source load')
-sources = {'../resource/test-neg.txt':'TEST_NEG', '../resource/test-pos.txt':'TEST_POS', '../resource/train-neg.txt':'TRAIN_NEG', '../resource/train-pos.txt':'TRAIN_POS', '../resource/train-unsup.txt':'TRAIN_UNS'}
+sources = config['dov2vec_sources']
 
 parser = Parser()
 
@@ -79,195 +48,149 @@ log.info('TaggedDocument')
 sentences = TaggedLineSentence(sources)
 
 log.info('D2V')
-model = Doc2Vec(min_count=1, window=10, size=100, sample=1e-4, negative=5, workers=7)
+model = Doc2Vec(min_count=1, window=10, size=config['doc2vec_dim'], sample=1e-4, negative=5, workers=7)
 model.build_vocab(sentences.to_array())
-'''
-log.info('Epoch')
-for epoch in range(10):
-	log.info('EPOCH: {}'.format(epoch))
-	model.train(sentences.sentences_perm())
 
-log.info('Model Save')
-model.save('./imdb.d2v')
+if config['load_doc2vec']:
+    model = Doc2Vec.load('../resource/imdb.d2v')
+else:
+    log.info('Epoch')
+    for epoch in range(10):
+        log.info('EPOCH: {}'.format(epoch))
+        model.train(sentences.sentences_perm())
 
-'''
-model = Doc2Vec.load('../resource/imdb.d2v')
+    log.info('Model Save')
+    model.save('./imdb.d2v')
+
 log.info('Sentiment')
 
-train_arrays = numpy.zeros((25000, 100))
-train_labels = numpy.zeros(25000)
-train_labels1 = numpy.zeros(25000)
-train_labels2 = numpy.zeros(25000)
-train_labels3 = numpy.zeros(25000)
-train_labels4 = numpy.zeros(25000)
-train_labels5 = numpy.zeros(25000)
-train_labels6 = numpy.zeros(25000)
-train_labels7 = numpy.zeros(25000)
-train_labels8 = numpy.zeros(25000)
+train_arrays = np.zeros((25000, config['doc2vec_dim']))
 
-train_labels_final = numpy.zeros(25000)
-test_arrays = numpy.zeros((25000, 100))
-test_labels1 = numpy.zeros(25000)
-test_labels2 = numpy.zeros(25000)
-test_labels3 = numpy.zeros(25000)
-test_labels4 = numpy.zeros(25000)
-test_labels5 = numpy.zeros(25000)
-test_labels6 = numpy.zeros(25000)
-test_labels7 = numpy.zeros(25000)
-test_labels8 = numpy.zeros(25000)
+train_labels = np.zeros(25000)
+train_labels_binary =  np.zeros(25000)
+
+test_arrays = np.zeros((25000, config['doc2vec_dim']))
+test_labels_binary =  np.zeros(25000)
 
 
-'''
-for i in range(12500):
-    prefix_train_pos = 'TRAIN_POS_' + str(i)
-    prefix_train_neg = 'TRAIN_NEG_' + str(i)
-    train_arrays[i] = model.docvecs[prefix_train_pos]
-    train_arrays[12500 + i] = model.docvecs[prefix_train_neg]
-    train_labels[i] = 1
-    train_labels[12500 + i] = 0
+train_labels1 = np.zeros(25000)
+train_labels2 = np.zeros(25000)
+train_labels3 = np.zeros(25000)
+train_labels4 = np.zeros(25000)
+train_labels7 = np.zeros(25000)
+train_labels8 = np.zeros(25000)
+train_labels9 = np.zeros(25000)
+train_labels10 = np.zeros(25000)
 
-print train_labels
 
-test_arrays = numpy.zeros((25000, 100))
-test_labels = numpy.zeros(25000)
+test_labels1 = np.zeros(25000)
+test_labels2 = np.zeros(25000)
+test_labels3 = np.zeros(25000)
+test_labels4 = np.zeros(25000)
+test_labels7 = np.zeros(25000)
+test_labels8 = np.zeros(25000)
+test_labels9 = np.zeros(25000)
+test_labels10 = np.zeros(25000)
+
+
 
 for i in range(12500):
-    prefix_test_pos = 'TEST_POS_' + str(i)
-    prefix_test_neg = 'TEST_NEG_' + str(i)
-    test_arrays[i] = model.docvecs[prefix_test_pos]
-    test_arrays[12500 + i] = model.docvecs[prefix_test_neg]
-    test_labels[i] = 1
-    test_labels[12500 + i] = 0
-'''
-
-for i in range(12500):
+    #Train
     prefix_train_pos = 'TRAIN_POS_' + str(i)
     prefix_train_neg = 'TRAIN_NEG_' + str(i)
     train_arrays[i] = model.docvecs[prefix_train_pos]
     train_arrays[12500 + i] = model.docvecs[prefix_train_neg]
 
-    train_labels[i] = 1
-    train_labels[12500 + i] = 0
+    train_labels = parser.train_pos_scores[i]
+    train_labels[12500 + i] = parser.train_neg_scores[i]
 
-    train_labels1[i] = 1 if parser.train_pos_scores[i] == 10 else 0
-    train_labels1[12500 + i] = 0
+    train_labels_binary[i] = 1
+    train_labels_binary[12500 + i] = 0
+    if config['classifier_class']:
+        train_labels10[i] = 1 if parser.train_pos_scores[i] == 10 else 0
+        train_labels10[12500 + i] = 0
 
-    train_labels2[i] = 1 if parser.train_pos_scores[i] == 9 else 0
-    train_labels2[12500 + i] = 0
+        train_labels9[i] = 1 if parser.train_pos_scores[i] == 9 else 0
+        train_labels9[12500 + i] = 0
 
-    train_labels3[i] = 1 if parser.train_pos_scores[i] == 8 else 0
-    train_labels3[12500 + i] = 0
+        train_labels8[i] = 1 if parser.train_pos_scores[i] == 8 else 0
+        train_labels8[12500 + i] = 0
 
-    train_labels4[i] = 1 if parser.train_pos_scores[i] == 7 else 0
-    train_labels4[12500 + i] = 0
+        train_labels7[i] = 1 if parser.train_pos_scores[i] == 7 else 0
+        train_labels7[12500 + i] = 0
 
-    train_labels5[i] = 0
-    train_labels5[12500 + i] = 1 if parser.train_neg_scores[i] == 1 else 0
+        train_labels1[i] = 0
+        train_labels1[12500 + i] = 1 if parser.train_neg_scores[i] == 1 else 0
 
-    train_labels6[i] = 0
-    train_labels6[12500 + i] = 1 if parser.train_neg_scores[i] == 2 else 0
+        train_labels2[i] = 0
+        train_labels2[12500 + i] = 1 if parser.train_neg_scores[i] == 2 else 0
 
-    train_labels7[i] = 0
-    train_labels7[12500 + i] = 1 if parser.train_neg_scores[i] == 3 else 0
+        train_labels3[i] = 0
+        train_labels3[12500 + i] = 1 if parser.train_neg_scores[i] == 3 else 0
 
-    train_labels8[i] = 0
-    train_labels8[12500 + i] = 1 if parser.train_neg_scores[i] == 4 else 0
+        train_labels4[i] = 0
+        train_labels4[12500 + i] = 1 if parser.train_neg_scores[i] == 4 else 0
 
-    train_labels_final[i] = 1
-    train_labels_final[12500 + i] = 0
-
-
-test_arrays = numpy.zeros((25000, 100))
-test_labels = numpy.zeros(25000)
-
-
-
-for i in range(12500):
+    #Test
     prefix_test_pos = 'TEST_POS_' + str(i)
     prefix_test_neg = 'TEST_NEG_' + str(i)
-
     test_arrays[i] = model.docvecs[prefix_test_pos]
     test_arrays[12500 + i] = model.docvecs[prefix_test_neg]
-    test_labels[i] = 1
-    test_labels[12500 + i] = 0
 
-    test_labels1[i] = 1 if parser.train_pos_scores[i] == 10 else 0
-    test_labels1[12500 + i] = 0
+    test_labels = parser.test_pos_scores[i]
+    test_labels[12500 + i] = parser.test_neg_scores[i]
 
-    test_labels2[i] = 1 if parser.train_pos_scores[i] == 9 else 0
-    test_labels2[12500 + i] = 0
+    test_labels_binary[i] = 1
+    test_labels_binary[12500 + i] = 0
 
-    test_labels3[i] = 1 if parser.train_pos_scores[i] == 8 else 0
-    test_labels3[12500 + i] = 0
+    if config['classifier_class']:
+        test_labels10[i] = 1 if parser.test_pos_scores[i] == 10 else 0
+        test_labels10[12500 + i] = 0
 
-    test_labels4[i] = 1 if parser.train_pos_scores[i] == 7 else 0
-    test_labels4[12500 + i] = 0
+        test_labels9[i] = 1 if parser.test_pos_scores[i] == 9 else 0
+        test_labels9[12500 + i] = 0
 
-    test_labels5[i] = 0
-    test_labels5[12500 + i] = 1 if parser.train_neg_scores[i] == 1 else 0
+        test_labels8[i] = 1 if parser.test_pos_scores[i] == 8 else 0
+        test_labels8[12500 + i] = 0
 
-    test_labels6[i] = 0
-    test_labels6[12500 + i] = 1 if parser.train_neg_scores[i] == 2 else 0
+        test_labels7[i] = 1 if parser.test_pos_scores[i] == 7 else 0
+        test_labels7[12500 + i] = 0
 
-    test_labels7[i] = 0
-    test_labels7[12500 + i] = 1 if parser.train_neg_scores[i] == 3 else 0
+        test_labels1[i] = 0
+        test_labels1[12500 + i] = 1 if parser.test_neg_scores[i] == 1 else 0
 
-    test_labels8[i] = 0
-    test_labels8[12500 + i] = 1 if parser.train_neg_scores[i] == 4 else 0
+        test_labels2[i] = 0
+        test_labels2[12500 + i] = 1 if parser.train_neg_scores[i] == 2 else 0
+
+        test_labels3[i] = 0
+        test_labels3[12500 + i] = 1 if parser.train_neg_scores[i] == 3 else 0
+
+        test_labels4[i] = 0
+        test_labels4[12500 + i] = 1 if parser.train_neg_scores[i] == 4 else 0
 
 
 
-#clfAda = AdaBoostClassifier(n_estimators=100)
-
-
-
-'''
 classifier1 = LogisticRegression()
 classifier2 = LogisticRegression()
 classifier3 = LogisticRegression()
 classifier4 = LogisticRegression()
-classifier5 = LogisticRegression()
-classifier6 = LogisticRegression()
 classifier7 = LogisticRegression()
 classifier8 = LogisticRegression()
-clfAda.fit(train_arrays,train_labels)
+classifier9 = LogisticRegression()
+classifier10 = LogisticRegression()
 
-finalClassifier = LogisticRegression()
-
-'''
 
 log.info('Logistic Classifier')
 
 classifier = LogisticRegression()
-classifier.fit(train_arrays, train_labels)
+classifier_binary = LogisticRegression()
+
+classifier_binary.fit(train_arrays, train_labels_binary)
 LogisticRegression(C=1.0, class_weight=None, dual=False, fit_intercept=True,
                    intercept_scaling=1, penalty='l2', random_state=None, tol=0.0001)
-print classifier.score(test_arrays,test_labels)
+print classifier_binary.score(test_arrays,test_labels_binary)
 
 log.info('CNN')
-
-def input_pipeline(x,y, batch_size, num_epochs=None):
-    # min_after_dequeue defines how big a buffer we will randomly sample
-    #   from -- bigger means better shuffling but slower start up and more
-    #   memory used.
-    # capacity must be larger than min_after_dequeue and the amount larger
-    #   determines the maximum we will prefetch.  Recommendation:
-    #   min_after_dequeue + (num_threads + a small safety margin) * batch_size
-    min_after_dequeue = 10000
-    capacity = min_after_dequeue + 3 * batch_size
-    example_batch, label_batch = tf.train.shuffle_batch(
-        [x, y], batch_size=batch_size, capacity=capacity,
-        min_after_dequeue=min_after_dequeue)
-    return example_batch, label_batch
-
-#function to init with a slightly positive to reduce dead neurons.
-def weight_variable(shape):
-  initial = tf.truncated_normal(shape, stddev=0.1)
-  return tf.Variable(initial)
-
-def bias_variable(shape):
-  initial = tf.constant(0.1, shape=shape)
-  return tf.Variable(initial)
 
 ##init CONv layer
 def conv2d(x, W):
@@ -278,13 +201,46 @@ def max_pool_2x2(x):
   return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
                         strides=[1, 2, 2, 1], padding='SAME')
 
+test_arrays = np.reshape(test_arrays, (config['n_samples'],config['doc2vec_dim']))
+train_arrays = np.reshape(test_arrays, (config['n_samples'],config['doc2vec_dim']))
 
-x = test_arrays
-y_ = test_labels
+train_labels = np.array([x-2 if x>4 else x for x in train_labels])
+test_labels = np.array([x-2 if x>4 else x for x in test_labels])
 
-W_conv1 = weight_variable([3, 3, 1, 16])
-b_conv1 = bias_variable([16])
+# Define placeholders for input
+x = tf.placeholder(tf.float32, shape=(None, config['doc2vec_dim']))
+y_ = tf.placeholder(tf.float32, shape=(None, config['doc2vec_dim']))
 
+with tf.variable_scope("linear1"):
+    W = tf.get_variable("weights", (100,8), initializer=tf.random_normal_initializer(stddev=0.1))
+    b = tf.get_variable("bias", [8], initializer=tf.constant_initializer(value=0.1, dtype=tf.float32))
+
+    y = tf.nn.softmax(tf.matmul(x,W)+b)
+
+with tf.Session() as sess:
+    test_labels = tf.one_hot(test_labels, 8, on_value=1.0, off_value=0.0)
+    test_labels = test_labels.eval()
+    print test_labels
+    train_labels = tf.one_hot(train_labels, 8, on_value=1.0, off_value=0.0)
+    train_labels.eval()
+    cross_entropy = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(y), reduction_indices=[1]))
+    train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy)
+    for _ in range(1000):
+        indices = np.random.choice(config['n_samples'],config['batch_size'])
+        X_batch,y_batch = train_arrays[indices],train_labels[indices]
+        sess.run(train_step, feed_dict={x: X_batch, y_: y_batch})
+    correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
+    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    print(accuracy.eval(feed_dict={x: test_arrays, y_: test_labels}))
+
+
+    #x_doc = tf.reshape(x, [-1,10,10,1])
+
+    #h_conv1 = tf.nn.relu(tf.nn.conv2d(x_doc, W_conv1) + b_conv1)
+
+
+
+'''
 x_image = tf.reshape(x, [-1,10,10,1])
 
 h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
@@ -320,7 +276,7 @@ with tf.Session() as sess:
 
 
 
-'''
+
 classifier1.fit(train_arrays, train_labels1)
 y1 = classifier1.predict_proba(test_arrays)
 print y1[100][0],y1[100][1]
