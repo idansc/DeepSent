@@ -100,8 +100,9 @@ for i in range(12500):
     prefix_train_neg = 'TRAIN_NEG_' + str(i)
     train_arrays[i] = model.docvecs[prefix_train_pos]
     train_arrays[12500 + i] = model.docvecs[prefix_train_neg]
-
-    train_labels = parser.train_pos_scores[i]
+    print parser.train_pos_scores[i]
+    print parser.train_neg_scores[i]
+    train_labels[i] = parser.train_pos_scores[i]
     train_labels[12500 + i] = parser.train_neg_scores[i]
 
     train_labels_binary[i] = 1
