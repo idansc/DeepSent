@@ -70,6 +70,8 @@ train_labels = np.zeros(25000)
 train_labels_binary =  np.zeros(25000)
 
 test_arrays = np.zeros((25000, config['doc2vec_dim']))
+
+test_labels =  np.zeros(25000)
 test_labels_binary =  np.zeros(25000)
 
 
@@ -100,8 +102,6 @@ for i in range(12500):
     prefix_train_neg = 'TRAIN_NEG_' + str(i)
     train_arrays[i] = model.docvecs[prefix_train_pos]
     train_arrays[12500 + i] = model.docvecs[prefix_train_neg]
-    print parser.train_pos_scores[i]
-    print parser.train_neg_scores[i]
     train_labels[i] = parser.train_pos_scores[i]
     train_labels[12500 + i] = parser.train_neg_scores[i]
 
@@ -137,8 +137,7 @@ for i in range(12500):
     prefix_test_neg = 'TEST_NEG_' + str(i)
     test_arrays[i] = model.docvecs[prefix_test_pos]
     test_arrays[12500 + i] = model.docvecs[prefix_test_neg]
-
-    test_labels = parser.test_pos_scores[i]
+    test_labels[i] = parser.test_pos_scores[i]
     test_labels[12500 + i] = parser.test_neg_scores[i]
 
     test_labels_binary[i] = 1
